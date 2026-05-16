@@ -42,7 +42,7 @@ fn render_main(frame: &mut Frame, app: &App) {
 
     // Title bar
     let title = Line::from(vec![
-        Span::styled(" TG Reader ", theme::channel_name()),
+        Span::styled(" Web Reader ", theme::channel_name()),
         Span::styled(
             format!(" {} posts", app.posts.len()),
             theme::dim(),
