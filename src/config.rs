@@ -12,6 +12,8 @@ pub struct Config {
     pub state_file: String,
     #[serde(default)]
     pub filter: FilterConfig,
+    #[serde(default = "default_cooldown_minutes")]
+    pub cooldown_minutes: u64,
 }
 
 fn default_state_file() -> String {
@@ -58,6 +60,10 @@ impl Default for HackerNewsConfig {
             limit: default_hn_limit(),
         }
     }
+}
+
+fn default_cooldown_minutes() -> u64 {
+    0
 }
 
 fn default_hn_limit() -> usize {

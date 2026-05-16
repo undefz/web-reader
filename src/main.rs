@@ -21,6 +21,24 @@ async fn main() -> Result<()> {
 
     let mut state = state::State::load(&config.state_file)?;
 
+    if config.cooldown_minutes > 0 {
+        if let Some(last_opened) = state.last_opened {
+            let elapsed = chrono::Utc::now() - last_opened;
+            let cooldown = chrono::Duration::minutes(config.cooldown_minutes as i64);
+            if elapsed < cooldown {
+                let remaining = cooldown - elapsed;
+                let h = remaining.num_hours();
+                let m = remaining.num_minutes() % 60;
+                let ago = elapsed.num_minutes();
+                eprintln!("Cooldown active: {h}h {m}m remaining (opened {ago}m ago, cooldown is {}m)", config.cooldown_minutes);
+                std::process::exit(1);
+            }
+        }
+    }
+
+    state.last_opened = Some(chrono::Utc::now());
+    state.save(&config.state_file)?;
+
     println!("Connecting to Telegram...");
     let client = telegram::connect(&config.telegram).await?;
 
