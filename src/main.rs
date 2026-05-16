@@ -86,7 +86,28 @@ async fn main() -> Result<()> {
         None => true,
     });
 
-    fetched.sort_by(|a, b| b.date.cmp(&a.date));
+    // Sort: by source category (HN, RSS, TG), then by source name
+    // (whichever source has the newest post comes first), then newest first within source
+    use std::collections::HashMap;
+    let mut source_newest: HashMap<(telegram::Source, String), chrono::DateTime<chrono::Utc>> =
+        HashMap::new();
+    for p in &fetched {
+        let key = (p.source, p.channel_name.clone());
+        let entry = source_newest.entry(key).or_insert(p.date);
+        if p.date > *entry {
+            *entry = p.date;
+        }
+    }
+    fetched.sort_by(|a, b| {
+        a.source
+            .cmp(&b.source)
+            .then_with(|| {
+                let a_newest = source_newest[&(a.source, a.channel_name.clone())];
+                let b_newest = source_newest[&(b.source, b.channel_name.clone())];
+                b_newest.cmp(&a_newest)
+            })
+            .then_with(|| b.date.cmp(&a.date))
+    });
 
     let terminal_width = terminal.size()?.width;
     let posts: Vec<ChannelPost> = fetched

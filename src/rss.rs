@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::telegram::FetchedPost;
+use crate::telegram::{FetchedPost, Source};
 
 fn html_to_text(html: &str) -> String {
     if html.contains('<') {
@@ -87,6 +87,7 @@ async fn fetch_one(client: &reqwest::Client, url: &str) -> Result<Vec<FetchedPos
             view_count: None,
             id: Some(format!("rss:{id}")),
             link,
+            source: Source::Rss,
         });
     }
 

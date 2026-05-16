@@ -7,6 +7,13 @@ use std::io::{self, Write};
 
 use crate::config::{FilterConfig, TelegramConfig};
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Source {
+    HackerNews,
+    Rss,
+    Telegram,
+}
+
 pub struct FetchedPost {
     pub channel_name: String,
     pub text: String,
@@ -14,6 +21,7 @@ pub struct FetchedPost {
     pub view_count: Option<i32>,
     pub id: Option<String>,
     pub link: Option<String>,
+    pub source: Source,
 }
 
 pub async fn connect(config: &TelegramConfig) -> Result<Client> {
@@ -108,6 +116,7 @@ pub async fn fetch_unread_posts(
                 view_count: msg.view_count(),
                 id: None,
                 link: None,
+                source: Source::Telegram,
             });
         }
 

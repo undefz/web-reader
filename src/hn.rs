@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 
-use crate::telegram::FetchedPost;
+use crate::telegram::{FetchedPost, Source};
 
 const TOP_STORIES_URL: &str = "https://hacker-news.firebaseio.com/v0/topstories.json";
 const ITEM_URL: &str = "https://hacker-news.firebaseio.com/v0/item";
@@ -36,8 +36,8 @@ pub async fn fetch_top_stories(
 
     let unseen_ids: Vec<u64> = ids
         .into_iter()
-        .filter(|id| !seen.contains(&format!("hn:{id}")))
         .take(limit)
+        .filter(|id| !seen.contains(&format!("hn:{id}")))
         .collect();
 
     let mut tasks = Vec::new();
@@ -77,6 +77,7 @@ pub async fn fetch_top_stories(
                     view_count: item.score,
                     id: Some(format!("hn:{}", item.id)),
                     link: item.url.or(Some(format!("https://news.ycombinator.com/item?id={}", item.id))),
+                    source: Source::HackerNews,
                 });
             }
             _ => continue,
