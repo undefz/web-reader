@@ -1,5 +1,6 @@
 mod app;
 mod config;
+mod hn;
 mod rss;
 mod state;
 mod telegram;
@@ -40,9 +41,21 @@ async fn main() -> Result<()> {
     })?;
 
     let rss_urls = config.rss.clone();
-    let (tg_result, rss_result) = tokio::join!(
+    let hn_config = &config.hacker_news;
+    let hn_enabled = hn_config.enabled;
+    let hn_limit = hn_config.limit;
+    let seen_clone = state.seen.clone();
+
+    let (tg_result, rss_result, hn_result) = tokio::join!(
         telegram::fetch_unread_posts(&client, &config.filter),
         rss::fetch_feeds(&rss_urls),
+        async {
+            if hn_enabled {
+                hn::fetch_top_stories(hn_limit, &seen_clone).await
+            } else {
+                Ok(vec![])
+            }
+        },
     );
 
     if let Err(e) = client.session().save_to_file(&config.telegram.session_file) {
@@ -62,7 +75,12 @@ async fn main() -> Result<()> {
         Err(e) => eprintln!("Warning: RSS fetch failed: {e}"),
     }
 
-    // Filter out already-seen RSS items
+    match hn_result {
+        Ok(hn_posts) => fetched.extend(hn_posts),
+        Err(e) => eprintln!("Warning: HN fetch failed: {e}"),
+    }
+
+    // Filter out already-seen items
     fetched.retain(|p| match &p.id {
         Some(id) => !state.is_seen(id),
         None => true,

@@ -8,6 +8,10 @@
   "rss": [
     "https://example.com/feed.xml"
   ],
+  "hacker_news": {
+    "enabled": true,
+    "limit": 30
+  },
   "state_file": "~/.config/web.state.json",
   "filter": {
     "min_negative_reactions": 10,

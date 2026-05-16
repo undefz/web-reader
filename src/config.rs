@@ -6,6 +6,8 @@ pub struct Config {
     pub telegram: TelegramConfig,
     #[serde(default)]
     pub rss: Vec<String>,
+    #[serde(default)]
+    pub hacker_news: HackerNewsConfig,
     #[serde(default = "default_state_file")]
     pub state_file: String,
     #[serde(default)]
@@ -39,6 +41,27 @@ impl Default for FilterConfig {
             negative_emojis: default_negative_emojis(),
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct HackerNewsConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_hn_limit")]
+    pub limit: usize,
+}
+
+impl Default for HackerNewsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            limit: default_hn_limit(),
+        }
+    }
+}
+
+fn default_hn_limit() -> usize {
+    30
 }
 
 fn default_min_reactions() -> i32 {
