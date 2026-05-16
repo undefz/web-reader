@@ -1,5 +1,7 @@
 mod app;
 mod config;
+mod rss;
+mod state;
 mod telegram;
 mod theme;
 mod ui;
@@ -15,6 +17,8 @@ async fn main() -> Result<()> {
         format!("{home}/.config/web.json")
     });
     let config = config::Config::load(&config_path)?;
+
+    let mut state = state::State::load(&config.state_file)?;
 
     println!("Connecting to Telegram...");
     let client = telegram::connect(&config.telegram).await?;
@@ -35,20 +39,36 @@ async fn main() -> Result<()> {
         )
     })?;
 
-    let fetched = telegram::fetch_unread_posts(&client, &config.filter).await;
+    let rss_urls = config.rss.clone();
+    let (tg_result, rss_result) = tokio::join!(
+        telegram::fetch_unread_posts(&client, &config.filter),
+        rss::fetch_feeds(&rss_urls),
+    );
 
-    // Save session before potential error
     if let Err(e) = client.session().save_to_file(&config.telegram.session_file) {
         eprintln!("Warning: failed to save session: {e}");
     }
 
-    let fetched = match fetched {
+    let mut fetched = match tg_result {
         Ok(f) => f,
         Err(e) => {
             ratatui::restore();
             return Err(e);
         }
     };
+
+    match rss_result {
+        Ok(rss_posts) => fetched.extend(rss_posts),
+        Err(e) => eprintln!("Warning: RSS fetch failed: {e}"),
+    }
+
+    // Filter out already-seen RSS items
+    fetched.retain(|p| match &p.id {
+        Some(id) => !state.is_seen(id),
+        None => true,
+    });
+
+    fetched.sort_by(|a, b| b.date.cmp(&a.date));
 
     let terminal_width = terminal.size()?.width;
     let posts: Vec<ChannelPost> = fetched
@@ -63,8 +83,19 @@ async fn main() -> Result<()> {
             },
             date: p.date,
             view_count: p.view_count,
+            id: p.id,
         })
         .collect();
+
+    // Mark all displayed RSS items as seen
+    for post in &posts {
+        if let Some(id) = &post.id {
+            state.mark_seen(id.clone());
+        }
+    }
+    if let Err(e) = state.save(&config.state_file) {
+        eprintln!("Warning: failed to save state: {e}");
+    }
 
     let mut app = App::new(posts);
 

@@ -13,6 +13,7 @@ pub struct ChannelPost {
     pub date: chrono::DateTime<chrono::Utc>,
     pub preview: String,
     pub view_count: Option<i32>,
+    pub id: Option<String>,
 }
 
 pub struct App {

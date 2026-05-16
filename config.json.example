@@ -2,9 +2,13 @@
   "telegram": {
     "api_id": 12345,
     "api_hash": "your_api_hash_here",
-    "session_file": "tg-reader.session",
+    "session_file": "~/.config/web.session",
     "phone": "+1234567890"
   },
+  "rss": [
+    "https://example.com/feed.xml"
+  ],
+  "state_file": "~/.config/web.state.json",
   "filter": {
     "min_negative_reactions": 10,
     "negative_emojis": ["🤡", "💩"]

@@ -5,7 +5,15 @@ use serde::Deserialize;
 pub struct Config {
     pub telegram: TelegramConfig,
     #[serde(default)]
+    pub rss: Vec<String>,
+    #[serde(default = "default_state_file")]
+    pub state_file: String,
+    #[serde(default)]
     pub filter: FilterConfig,
+}
+
+fn default_state_file() -> String {
+    "~/.config/web.state.json".into()
 }
 
 #[derive(Deserialize)]
@@ -58,6 +66,7 @@ impl Config {
         let mut config: Self =
             serde_json::from_str(&content).with_context(|| "Failed to parse config file")?;
         config.telegram.session_file = expand_tilde(&config.telegram.session_file);
+        config.state_file = expand_tilde(&config.state_file);
         Ok(config)
     }
 }
