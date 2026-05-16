@@ -76,7 +76,7 @@ pub async fn fetch_top_stories(
                     date,
                     view_count: item.score,
                     id: Some(format!("hn:{}", item.id)),
-                    link: item.url,
+                    link: item.url.or(Some(format!("https://news.ycombinator.com/item?id={}", item.id))),
                 });
             }
             _ => continue,

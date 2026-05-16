@@ -131,14 +131,22 @@ fn render_detail(frame: &mut Frame, app: &App, post_idx: usize) {
     let inner = block.inner(modal_area);
     frame.render_widget(block, modal_area);
 
+    let header_height = {
+        let mut h = 1_u16; // date line
+        if post.link.is_some() {
+            h += 1;
+        }
+        h
+    };
     let chunks = Layout::vertical([
-        Constraint::Length(1),
+        Constraint::Length(header_height),
         Constraint::Min(0),
         Constraint::Length(1),
     ])
     .split(inner);
 
-    // Date line
+    // Header lines: date + optional link
+    let mut header_lines = vec![];
     let mut date_spans = vec![Span::styled(
         format!("{}", post.date.format("%Y-%m-%d %H:%M UTC")),
         theme::dim(),
@@ -146,8 +154,12 @@ fn render_detail(frame: &mut Frame, app: &App, post_idx: usize) {
     if let Some(views) = post.view_count {
         date_spans.push(Span::styled(format!("  |  {} views", views), theme::dim()));
     }
+    header_lines.push(Line::from(date_spans));
+    if let Some(link) = &post.link {
+        header_lines.push(Line::from(Span::styled(link.as_str(), theme::dim())));
+    }
     frame.render_widget(
-        Paragraph::new(Line::from(date_spans)).style(theme::base()),
+        Paragraph::new(header_lines).style(theme::base()),
         chunks[0],
     );
 
