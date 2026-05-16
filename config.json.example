@@ -1,0 +1,12 @@
+{
+  "telegram": {
+    "api_id": 12345,
+    "api_hash": "your_api_hash_here",
+    "session_file": "tg-reader.session",
+    "phone": "+1234567890"
+  },
+  "filter": {
+    "min_negative_reactions": 10,
+    "negative_emojis": ["🤡", "💩"]
+  }
+}
