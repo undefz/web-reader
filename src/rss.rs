@@ -78,12 +78,15 @@ async fn fetch_one(client: &reqwest::Client, url: &str) -> Result<Vec<FetchedPos
             .or(entry.updated)
             .unwrap_or_else(chrono::Utc::now);
 
+        let link = entry.links.first().map(|l| l.href.clone());
+
         posts.push(FetchedPost {
             channel_name: feed_title.clone(),
             text,
             date,
             view_count: None,
             id: Some(format!("rss:{id}")),
+            link,
         });
     }
 

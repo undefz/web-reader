@@ -14,6 +14,7 @@ pub struct ChannelPost {
     pub preview: String,
     pub view_count: Option<i32>,
     pub id: Option<String>,
+    pub link: Option<String>,
 }
 
 pub struct App {

@@ -13,6 +13,7 @@ pub struct FetchedPost {
     pub date: chrono::DateTime<chrono::Utc>,
     pub view_count: Option<i32>,
     pub id: Option<String>,
+    pub link: Option<String>,
 }
 
 pub async fn connect(config: &TelegramConfig) -> Result<Client> {
@@ -106,6 +107,7 @@ pub async fn fetch_unread_posts(
                 date: msg.date(),
                 view_count: msg.view_count(),
                 id: None,
+                link: None,
             });
         }
 

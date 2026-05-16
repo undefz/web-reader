@@ -84,6 +84,7 @@ async fn main() -> Result<()> {
             date: p.date,
             view_count: p.view_count,
             id: p.id,
+            link: p.link,
         })
         .collect();
 
@@ -132,14 +133,16 @@ fn handle_key(app: &mut App, key: KeyCode, visible_height: usize) {
             KeyCode::Char('j') | KeyCode::Down => app.move_down(visible_height),
             KeyCode::Char('k') | KeyCode::Up => app.move_up(),
             KeyCode::Char(' ') | KeyCode::Enter => app.open_detail(),
+            KeyCode::Char('v') => open_selected_link(app),
             KeyCode::Char('?') => app.toggle_help(),
             _ => {}
         },
-        Screen::Detail(_) => match key {
+        Screen::Detail(idx) => match key {
             KeyCode::Char('q') => app.should_quit = true,
             KeyCode::Esc | KeyCode::Char(' ') => app.close_detail(),
             KeyCode::Char('j') | KeyCode::Down => app.scroll_down(),
             KeyCode::Char('k') | KeyCode::Up => app.scroll_up(),
+            KeyCode::Char('v') => open_link_at(app, *idx),
             KeyCode::Char('?') => app.toggle_help(),
             _ => {}
         },
@@ -149,5 +152,22 @@ fn handle_key(app: &mut App, key: KeyCode, visible_height: usize) {
             _ => {}
         },
         Screen::Loading(_) => {}
+    }
+}
+
+fn open_selected_link(app: &App) {
+    open_link_at(app, app.selected);
+}
+
+fn open_link_at(app: &App, idx: usize) {
+    if let Some(post) = app.posts.get(idx) {
+        if let Some(link) = &post.link {
+            let _ = std::process::Command::new("open")
+                .arg(link)
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn();
+        }
     }
 }

@@ -8,7 +8,10 @@ pub fn render(frame: &mut Frame, app: &App) {
     match &app.screen {
         Screen::Loading(msg) => render_loading(frame, msg),
         Screen::Main => render_main(frame, app),
-        Screen::Detail(idx) => render_detail(frame, app, *idx),
+        Screen::Detail(idx) => {
+            render_main(frame, app);
+            render_detail(frame, app, *idx);
+        }
         Screen::Help => {
             render_main(frame, app);
             render_help(frame);
@@ -96,6 +99,8 @@ fn render_main(frame: &mut Frame, app: &App) {
         Span::styled(": open  ", theme::status_bar()),
         Span::styled("q", Style::default().fg(theme::FG).bg(theme::STATUS_BG)),
         Span::styled(": quit  ", theme::status_bar()),
+        Span::styled("v", Style::default().fg(theme::FG).bg(theme::STATUS_BG)),
+        Span::styled(": open  ", theme::status_bar()),
         Span::styled("?", Style::default().fg(theme::FG).bg(theme::STATUS_BG)),
         Span::styled(": help", theme::status_bar()),
     ]);
@@ -109,39 +114,42 @@ fn render_detail(frame: &mut Frame, app: &App, post_idx: usize) {
     let post = &app.posts[post_idx];
     let area = frame.area();
 
+    let modal_width = (area.width * 60 / 100).max(40);
+    let modal_height = area.height.saturating_sub(4).max(10);
+    let x = (area.width.saturating_sub(modal_width)) / 2;
+    let y = (area.height.saturating_sub(modal_height)) / 2;
+    let modal_area = Rect::new(x, y, modal_width, modal_height);
+
+    frame.render_widget(Clear, modal_area);
+
+    let block = Block::default()
+        .title(format!(" {} ", post.channel_name))
+        .title_style(theme::channel_name())
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(theme::BORDER))
+        .style(theme::base());
+    let inner = block.inner(modal_area);
+    frame.render_widget(block, modal_area);
+
     let chunks = Layout::vertical([
-        Constraint::Length(3),
+        Constraint::Length(1),
         Constraint::Min(0),
         Constraint::Length(1),
     ])
-    .split(area);
+    .split(inner);
 
-    // Header
-    let mut header_lines = vec![
-        Line::from(Span::styled(
-            format!(" {}", post.channel_name),
-            theme::channel_name(),
-        )),
-        Line::from(Span::styled(
-            format!(" {}", post.date.format("%Y-%m-%d %H:%M UTC")),
-            theme::dim(),
-        )),
-    ];
+    // Date line
+    let mut date_spans = vec![Span::styled(
+        format!("{}", post.date.format("%Y-%m-%d %H:%M UTC")),
+        theme::dim(),
+    )];
     if let Some(views) = post.view_count {
-        header_lines[1] = Line::from(vec![
-            Span::styled(
-                format!(" {}", post.date.format("%Y-%m-%d %H:%M UTC")),
-                theme::dim(),
-            ),
-            Span::styled(format!("  |  {} views", views), theme::dim()),
-        ]);
+        date_spans.push(Span::styled(format!("  |  {} views", views), theme::dim()));
     }
-    let header = Paragraph::new(header_lines).style(theme::base()).block(
-        Block::default()
-            .borders(Borders::BOTTOM)
-            .border_style(Style::default().fg(theme::BORDER).bg(theme::BG)),
+    frame.render_widget(
+        Paragraph::new(Line::from(date_spans)).style(theme::base()),
+        chunks[0],
     );
-    frame.render_widget(header, chunks[0]);
 
     // Body
     let body = Paragraph::new(post.text.as_str())
@@ -151,14 +159,19 @@ fn render_detail(frame: &mut Frame, app: &App, post_idx: usize) {
     frame.render_widget(body, chunks[1]);
 
     // Status bar
-    let status = Line::from(vec![
-        Span::styled(" Esc/Space", Style::default().fg(theme::FG).bg(theme::STATUS_BG)),
-        Span::styled(": back  ", theme::status_bar()),
-        Span::styled("j/k", Style::default().fg(theme::FG).bg(theme::STATUS_BG)),
-        Span::styled(": scroll", theme::status_bar()),
-    ]);
+    let mut status_spans = vec![
+        Span::styled("Esc/Space", Style::default().fg(theme::FG).bg(theme::BG)),
+        Span::styled(": back  ", theme::dim()),
+        Span::styled("j/k", Style::default().fg(theme::FG).bg(theme::BG)),
+        Span::styled(": scroll  ", theme::dim()),
+        Span::styled("v", Style::default().fg(theme::FG).bg(theme::BG)),
+        Span::styled(": open in browser", theme::dim()),
+    ];
+    if post.link.is_none() {
+        status_spans.truncate(4);
+    }
     frame.render_widget(
-        Paragraph::new(status).style(theme::status_bar()),
+        Paragraph::new(Line::from(status_spans)).style(theme::base()),
         chunks[2],
     );
 }
@@ -167,7 +180,7 @@ fn render_help(frame: &mut Frame) {
     let area = frame.area();
 
     let popup_width = (area.width * 60 / 100).max(40).min(60);
-    let popup_height = 12_u16.min(area.height);
+    let popup_height = 13_u16.min(area.height);
     let x = (area.width.saturating_sub(popup_width)) / 2;
     let y = (area.height.saturating_sub(popup_height)) / 2;
     let popup_area = Rect::new(x, y, popup_width, popup_height);
@@ -182,6 +195,7 @@ fn render_help(frame: &mut Frame) {
         Line::from(Span::styled("  k / ↑       Move up", theme::base())),
         Line::from(Span::styled("  Space       Open post / Go back", theme::base())),
         Line::from(Span::styled("  Enter       Open post", theme::base())),
+        Line::from(Span::styled("  v           Open link in browser", theme::base())),
         Line::from(Span::styled("  Esc         Go back", theme::base())),
         Line::from(Span::styled("  ?           Toggle this help", theme::base())),
         Line::from(Span::styled("  q           Quit", theme::base())),
