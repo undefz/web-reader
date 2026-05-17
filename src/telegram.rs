@@ -169,16 +169,23 @@ fn has_excessive_negative_reactions(raw: &tl::types::Message, config: &FilterCon
         _ => return false,
     };
 
-    for rc in &reactions.results {
-        let tl::enums::ReactionCount::Count(count_data) = rc;
-        if count_data.count >= config.min_negative_reactions {
-            if let tl::enums::Reaction::Emoji(emoji) = &count_data.reaction {
-                if config.negative_emojis.iter().any(|e| *e == emoji.emoticon) {
-                    return true;
-                }
-            }
-        }
+    let top = reactions
+        .results
+        .iter()
+        .map(|tl::enums::ReactionCount::Count(c)| c)
+        .max_by_key(|c| c.count);
+
+    let Some(top) = top else {
+        return false;
+    };
+
+    if top.count < config.min_negative_reactions {
+        return false;
     }
 
-    false
+    let tl::enums::Reaction::Emoji(emoji) = &top.reaction else {
+        return false;
+    };
+
+    config.negative_emojis.iter().any(|e| *e == emoji.emoticon)
 }
