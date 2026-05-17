@@ -102,38 +102,26 @@ pub async fn fetch_unread_posts(
         let channel_name = channel.title().to_string();
         let packed = channel.pack();
 
-        // Neither bound is fully trustworthy on its own:
-        //   - unread_count treats an album as one user-visible item, but
-        //     iter_messages returns each album member separately, so capping
-        //     at unread_count cuts off album captions.
-        //   - read_inbox_max_id can be ahead of what unread_count implies
-        //     when read state syncs from another Telegram client (mobile/
-        //     desktop), making a strict break-on-boundary stop too early.
-        // Strategy: keep fetching until we have at least `unread_count` posts
-        // AND we've crossed the read boundary. Always drain album members for
-        // any group we've already started, so captions never get orphaned.
-        // Hard cap on raw iterations as a safety net.
+        // Stop once we've drained at least unread_count raw messages AND
+        // crossed the read boundary. Both bounds are needed: unread_count
+        // treats an album as one user-visible item (so capping at it alone
+        // cuts off album members), and read_inbox_max_id can run ahead of
+        // unread_count when read state syncs from another client (so
+        // breaking at it alone misses messages unread_count still considers
+        // unread). Count raw iterations rather than pushed posts — the
+        // negative-reactions filter and album-member merging both `continue`
+        // without growing channel_posts, which would otherwise keep us
+        // iterating into already-read messages.
         let mut messages = client.iter_messages(packed);
         let mut channel_posts: Vec<FetchedPost> = Vec::new();
         let mut group_indices: std::collections::HashMap<i64, usize> = std::collections::HashMap::new();
         let target = unread_count as usize;
-        let safety_cap = target + 100;
         let mut iter_count = 0;
 
         while let Some(msg) = messages.next().await? {
             iter_count += 1;
-            if iter_count > safety_cap {
-                break;
-            }
 
-            let in_open_group = msg
-                .raw
-                .grouped_id
-                .map_or(false, |g| group_indices.contains_key(&g));
-            let past_boundary = msg.raw.id <= read_inbox_max_id;
-            let target_reached = channel_posts.len() >= target;
-
-            if past_boundary && target_reached && !in_open_group {
+            if iter_count > target && msg.raw.id <= read_inbox_max_id {
                 break;
             }
 
