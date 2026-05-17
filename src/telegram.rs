@@ -90,9 +90,9 @@ pub async fn fetch_unread_posts(
             continue;
         };
 
-        let unread_count = match &dialog.raw {
-            tl::enums::Dialog::Dialog(d) => d.unread_count,
-            tl::enums::Dialog::Folder(_) => 0,
+        let (unread_count, read_inbox_max_id) = match &dialog.raw {
+            tl::enums::Dialog::Dialog(d) => (d.unread_count, d.read_inbox_max_id),
+            tl::enums::Dialog::Folder(_) => (0, 0),
         };
 
         if unread_count == 0 {
@@ -102,14 +102,37 @@ pub async fn fetch_unread_posts(
         let channel_name = channel.title().to_string();
         let packed = channel.pack();
 
-        let mut messages = client.iter_messages(packed).limit(unread_count as usize);
+        // Stop at read_inbox_max_id rather than capping by unread_count.
+        // An album is N separate messages sharing a grouped_id, but the
+        // dialog's unread_count treats it as one user-visible item, so the
+        // cap would cut off older unread messages — sometimes the captioned
+        // member of an album, leaving the rest as "(media)".
+        let mut messages = client.iter_messages(packed);
+        let mut channel_posts: Vec<FetchedPost> = Vec::new();
+        let mut group_indices: std::collections::HashMap<i64, usize> = std::collections::HashMap::new();
+
         while let Some(msg) = messages.next().await? {
+            if msg.raw.id <= read_inbox_max_id {
+                break;
+            }
+
             if has_excessive_negative_reactions(&msg.raw, filter) {
                 continue;
             }
 
             let text = msg.text().to_string();
-            posts.push(FetchedPost {
+
+            if let Some(gid) = msg.raw.grouped_id {
+                if let Some(&idx) = group_indices.get(&gid) {
+                    if !text.is_empty() && channel_posts[idx].text.is_empty() {
+                        channel_posts[idx].text = text;
+                    }
+                    continue;
+                }
+                group_indices.insert(gid, channel_posts.len());
+            }
+
+            channel_posts.push(FetchedPost {
                 channel_name: channel_name.clone(),
                 text,
                 date: msg.date(),
@@ -119,6 +142,7 @@ pub async fn fetch_unread_posts(
                 source: Source::Telegram,
             });
         }
+        posts.extend(channel_posts);
 
         // Mark channel as read
         if let Err(e) = client.mark_as_read(packed).await {
