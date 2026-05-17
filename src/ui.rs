@@ -147,8 +147,9 @@ fn render_detail(frame: &mut Frame, app: &App, post_idx: usize) {
 
     // Header lines: date + optional link
     let mut header_lines = vec![];
+    let local_date = post.date.with_timezone(&chrono::Local);
     let mut date_spans = vec![Span::styled(
-        format!("{}", post.date.format("%Y-%m-%d %H:%M UTC")),
+        format!("{}", local_date.format("%Y-%m-%d %H:%M %Z")),
         theme::dim(),
     )];
     if let Some(views) = post.view_count {
