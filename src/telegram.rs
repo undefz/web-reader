@@ -113,8 +113,7 @@ pub async fn fetch_unread_posts(
         // without growing channel_posts, which would otherwise keep us
         // iterating into already-read messages.
         let mut messages = client.iter_messages(packed);
-        let mut channel_posts: Vec<FetchedPost> = Vec::new();
-        let mut group_indices: std::collections::HashMap<i64, usize> = std::collections::HashMap::new();
+        let mut raw_msgs: Vec<grammers_client::types::Message> = Vec::new();
         let target = unread_count as usize;
         let mut iter_count = 0;
 
@@ -125,8 +124,29 @@ pub async fn fetch_unread_posts(
                 break;
             }
 
+            raw_msgs.push(msg);
+        }
+
+        // Reactions in an album are attached to a single message, but they
+        // apply to the whole group as far as the user is concerned. Collect
+        // filtered group IDs first so every album member is dropped together.
+        let mut filtered_groups: std::collections::HashSet<i64> = std::collections::HashSet::new();
+        for msg in &raw_msgs {
             if has_excessive_negative_reactions(&msg.raw, filter) {
-                continue;
+                if let Some(gid) = msg.raw.grouped_id {
+                    filtered_groups.insert(gid);
+                }
+            }
+        }
+
+        let mut channel_posts: Vec<FetchedPost> = Vec::new();
+        let mut group_indices: std::collections::HashMap<i64, usize> = std::collections::HashMap::new();
+
+        for msg in raw_msgs {
+            match msg.raw.grouped_id {
+                Some(gid) if filtered_groups.contains(&gid) => continue,
+                None if has_excessive_negative_reactions(&msg.raw, filter) => continue,
+                _ => {}
             }
 
             let text = msg.text().to_string();
