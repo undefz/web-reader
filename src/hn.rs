@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 
-use crate::post::{Post, Type};
+use crate::post::{Post, Kind};
 
 const TOP_STORIES_URL: &str = "https://hacker-news.firebaseio.com/v0/topstories.json";
 const ITEM_URL: &str = "https://hacker-news.firebaseio.com/v0/item";
@@ -77,7 +77,7 @@ pub async fn fetch_top_stories(
                     view_count: item.score,
                     id: Some(format!("hn:{}", item.id)),
                     link: item.url.or(Some(format!("https://news.ycombinator.com/item?id={}", item.id))),
-                    type_: Type::HackerNews,
+                    kind: Kind::HackerNews,
                 });
             }
             _ => continue,

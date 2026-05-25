@@ -3,7 +3,7 @@ use grammers_client::Client;
 use std::collections::HashMap;
 
 use crate::config::Config;
-use crate::post::{Post, Type};
+use crate::post::{Post, Kind};
 use crate::state::State;
 use crate::{hn, rss, telegram};
 
@@ -54,20 +54,20 @@ pub async fn collect_posts(
 // Order: by source type (HN, RSS, TG), then groups (type, source) by their
 // freshest post, then posts within a group by date desc.
 fn sort_for_display(posts: &mut [Post]) {
-    let mut group_newest: HashMap<(Type, String), chrono::DateTime<chrono::Utc>> = HashMap::new();
+    let mut group_newest: HashMap<(Kind, String), chrono::DateTime<chrono::Utc>> = HashMap::new();
     for p in posts.iter() {
-        let key = (p.type_, p.source.clone());
+        let key = (p.kind, p.source.clone());
         let entry = group_newest.entry(key).or_insert(p.date);
         if p.date > *entry {
             *entry = p.date;
         }
     }
     posts.sort_by(|a, b| {
-        a.type_
-            .cmp(&b.type_)
+        a.kind
+            .cmp(&b.kind)
             .then_with(|| {
-                let a_newest = group_newest[&(a.type_, a.source.clone())];
-                let b_newest = group_newest[&(b.type_, b.source.clone())];
+                let a_newest = group_newest[&(a.kind, a.source.clone())];
+                let b_newest = group_newest[&(b.kind, b.source.clone())];
                 b_newest.cmp(&a_newest)
             })
             .then_with(|| b.date.cmp(&a.date))

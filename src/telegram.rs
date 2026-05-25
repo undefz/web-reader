@@ -6,7 +6,7 @@ use grammers_tl_types as tl;
 use std::io::{self, Write};
 
 use crate::config::{FilterConfig, TelegramConfig};
-use crate::post::{Post, Type};
+use crate::post::{Post, Kind};
 
 pub async fn connect(config: &TelegramConfig) -> Result<Client> {
     let client = Client::connect(Config {
@@ -157,7 +157,7 @@ pub async fn fetch_unread_posts(
                 view_count: msg.view_count(),
                 id: None,
                 link,
-                type_: Type::Telegram,
+                kind: Kind::Telegram,
             });
         }
 

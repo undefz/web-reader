@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Type {
+pub enum Kind {
     HackerNews,
     Rss,
     Telegram,
@@ -12,5 +12,5 @@ pub struct Post {
     pub view_count: Option<i32>,
     pub id: Option<String>,
     pub link: Option<String>,
-    pub type_: Type,
+    pub kind: Kind,
 }

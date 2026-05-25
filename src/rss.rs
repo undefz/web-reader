@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::post::{Post, Type};
+use crate::post::{Post, Kind};
 
 fn html_to_text(html: &str) -> String {
     if html.contains('<') {
@@ -87,7 +87,7 @@ async fn fetch_one(client: &reqwest::Client, url: &str) -> Result<Vec<Post>> {
             view_count: None,
             id: Some(format!("rss:{id}")),
             link,
-            type_: Type::Rss,
+            kind: Kind::Rss,
         });
     }
 
