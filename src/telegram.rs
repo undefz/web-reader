@@ -150,11 +150,16 @@ pub async fn fetch_unread_posts(
             }
 
             let text = msg.text().to_string();
+            let link = extract_first_link(&msg.raw);
 
             if let Some(gid) = msg.raw.grouped_id {
                 if let Some(&idx) = group_indices.get(&gid) {
+                    // Text and link travel together — both come from the same
+                    // album member so the displayed caption never advertises a
+                    // URL that belongs to a different photo.
                     if !text.is_empty() && channel_posts[idx].text.is_empty() {
                         channel_posts[idx].text = text;
+                        channel_posts[idx].link = link;
                     }
                     continue;
                 }
@@ -167,7 +172,7 @@ pub async fn fetch_unread_posts(
                 date: msg.date(),
                 view_count: msg.view_count(),
                 id: None,
-                link: None,
+                link,
                 source: Source::Telegram,
             });
         }
@@ -181,6 +186,42 @@ pub async fn fetch_unread_posts(
 
     posts.sort_by(|a, b| b.date.cmp(&a.date));
     Ok(posts)
+}
+
+// Telegram entity offsets/lengths are in UTF-16 code units, not bytes, so the
+// plain-URL branch round-trips through UTF-16 before slicing.
+fn extract_first_link(raw: &tl::types::Message) -> Option<String> {
+    let entities = raw.entities.as_ref()?;
+    let mut text_utf16: Option<Vec<u16>> = None;
+
+    for entity in entities {
+        match entity {
+            tl::enums::MessageEntity::TextUrl(e) if !e.url.is_empty() => {
+                return Some(e.url.clone())
+            }
+            tl::enums::MessageEntity::Url(e) => {
+                let start = usize::try_from(e.offset).ok();
+                let length = usize::try_from(e.length).ok();
+                let (Some(start), Some(length)) = (start, length) else {
+                    continue;
+                };
+                if length == 0 {
+                    continue;
+                }
+                let units = text_utf16.get_or_insert_with(|| raw.message.encode_utf16().collect());
+                let end = start.saturating_add(length);
+                if end <= units.len() {
+                    if let Ok(s) = String::from_utf16(&units[start..end]) {
+                        if !s.is_empty() {
+                            return Some(s);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn has_excessive_negative_reactions(raw: &tl::types::Message, config: &FilterConfig) -> bool {
