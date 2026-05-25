@@ -6,23 +6,7 @@ use grammers_tl_types as tl;
 use std::io::{self, Write};
 
 use crate::config::{FilterConfig, TelegramConfig};
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Source {
-    HackerNews,
-    Rss,
-    Telegram,
-}
-
-pub struct FetchedPost {
-    pub channel_name: String,
-    pub text: String,
-    pub date: chrono::DateTime<chrono::Utc>,
-    pub view_count: Option<i32>,
-    pub id: Option<String>,
-    pub link: Option<String>,
-    pub source: Source,
-}
+use crate::post::{FetchedPost, Source};
 
 pub async fn connect(config: &TelegramConfig) -> Result<Client> {
     let client = Client::connect(Config {

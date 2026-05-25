@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod hn;
+mod post;
 mod rss;
 mod state;
 mod telegram;
@@ -107,7 +108,7 @@ async fn main() -> Result<()> {
     // Sort: by source category (HN, RSS, TG), then by source name
     // (whichever source has the newest post comes first), then newest first within source
     use std::collections::HashMap;
-    let mut source_newest: HashMap<(telegram::Source, String), chrono::DateTime<chrono::Utc>> =
+    let mut source_newest: HashMap<(post::Source, String), chrono::DateTime<chrono::Utc>> =
         HashMap::new();
     for p in &fetched {
         let key = (p.source, p.channel_name.clone());

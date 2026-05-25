@@ -2,12 +2,13 @@
 
 ## Architecture
 
-~1000 lines of Rust across 9 modules. The app has a two-phase startup: Telegram authentication happens before the TUI (auth needs cooked stdin, TUI uses raw mode), then all data sources are fetched in parallel via `tokio::join!`.
+~1000 lines of Rust across 10 modules. The app has a two-phase startup: Telegram authentication happens before the TUI (auth needs cooked stdin, TUI uses raw mode), then all data sources are fetched in parallel via `tokio::join!`.
 
 ## Modules
 
 - **main.rs** — Entry point. Loads config, connects to Telegram, enters TUI, runs the event loop. Orchestrates parallel fetching of TG + RSS + HN. Manages state persistence.
 - **config.rs** — Deserializes `~/.config/web.json` via serde. Handles `~` expansion for paths. All fields have serde defaults so only `telegram` is required.
+- **post.rs** — Defines `FetchedPost` (unified raw-post struct returned by all fetchers) and `Source` (HackerNews/Rss/Telegram). Used by telegram, rss, hn, and main.
 - **telegram.rs** — Uses `grammers-client` (MTProto, not Bot API) to connect as a user account. Iterates dialogs, filters to `Chat::Channel` (broadcast only — grammers guarantees this variant excludes megagroups). Fetches unread messages, filters by negative reactions via raw TL types, marks channels as read.
 - **rss.rs** — Fetches RSS/Atom feeds with `reqwest`, parses with `feed-rs`. Prefers `content` (maps to `content:encoded`) over `summary` for full articles. Converts HTML to plain text with `html2text`.
 - **hn.rs** — Fetches HN top story IDs, pre-filters already-seen IDs, then fetches item details in parallel via `tokio::spawn`. Only includes `type: "story"`.

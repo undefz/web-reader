@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::telegram::{FetchedPost, Source};
+use crate::post::{FetchedPost, Source};
 
 fn html_to_text(html: &str) -> String {
     if html.contains('<') {

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 
-use crate::telegram::{FetchedPost, Source};
+use crate::post::{FetchedPost, Source};
 
 const TOP_STORIES_URL: &str = "https://hacker-news.firebaseio.com/v0/topstories.json";
 const ITEM_URL: &str = "https://hacker-news.firebaseio.com/v0/item";
