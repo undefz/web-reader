@@ -44,15 +44,9 @@ fn render_main(frame: &mut Frame, app: &App) {
     // Title bar
     let title = Line::from(vec![
         Span::styled(" Web Reader ", theme::channel_name()),
-        Span::styled(
-            format!(" {} posts", app.posts.len()),
-            theme::dim(),
-        ),
+        Span::styled(format!(" {} posts", app.posts.len()), theme::dim()),
     ]);
-    frame.render_widget(
-        Paragraph::new(title).style(theme::status_bar()),
-        chunks[0],
-    );
+    frame.render_widget(Paragraph::new(title).style(theme::status_bar()), chunks[0]);
 
     // Post list
     let visible_height = chunks[1].height as usize;
@@ -106,10 +100,7 @@ fn render_main(frame: &mut Frame, app: &App) {
         Span::styled("?", Style::default().fg(theme::FG).bg(theme::STATUS_BG)),
         Span::styled(": help", theme::status_bar()),
     ]);
-    frame.render_widget(
-        Paragraph::new(status).style(theme::status_bar()),
-        chunks[2],
-    );
+    frame.render_widget(Paragraph::new(status).style(theme::status_bar()), chunks[2]);
 }
 
 fn render_detail(frame: &mut Frame, app: &App, post_idx: usize) {
@@ -161,10 +152,7 @@ fn render_detail(frame: &mut Frame, app: &App, post_idx: usize) {
     if let Some(link) = &post.link {
         header_lines.push(Line::from(Span::styled(link.as_str(), theme::dim())));
     }
-    frame.render_widget(
-        Paragraph::new(header_lines).style(theme::base()),
-        chunks[0],
-    );
+    frame.render_widget(Paragraph::new(header_lines).style(theme::base()), chunks[0]);
 
     // Body
     let body = Paragraph::new(post.text.as_str())
@@ -208,11 +196,20 @@ fn render_help(frame: &mut Frame) {
         Line::from(""),
         Line::from(Span::styled("  j / ↓       Move down", theme::base())),
         Line::from(Span::styled("  k / ↑       Move up", theme::base())),
-        Line::from(Span::styled("  Space       Open post / Go back", theme::base())),
+        Line::from(Span::styled(
+            "  Space       Open post / Go back",
+            theme::base(),
+        )),
         Line::from(Span::styled("  Enter       Open post", theme::base())),
-        Line::from(Span::styled("  v           Open link in browser", theme::base())),
+        Line::from(Span::styled(
+            "  v           Open link in browser",
+            theme::base(),
+        )),
         Line::from(Span::styled("  Esc         Go back", theme::base())),
-        Line::from(Span::styled("  ?           Toggle this help", theme::base())),
+        Line::from(Span::styled(
+            "  ?           Toggle this help",
+            theme::base(),
+        )),
         Line::from(Span::styled("  q           Quit", theme::base())),
         Line::from(""),
     ];

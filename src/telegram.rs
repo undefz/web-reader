@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use grammers_client::session::Session;
 use grammers_client::types::Chat;
 use grammers_client::{Client, Config, InitParams, SignInError};
@@ -6,7 +6,7 @@ use grammers_tl_types as tl;
 use std::io::{self, Write};
 
 use crate::config::{FilterConfig, TelegramConfig};
-use crate::post::{Post, Kind};
+use crate::post::{Kind, Post};
 
 pub async fn connect(config: &TelegramConfig) -> Result<Client> {
     let client = Client::connect(Config {
@@ -62,10 +62,7 @@ pub async fn connect(config: &TelegramConfig) -> Result<Client> {
     Ok(client)
 }
 
-pub async fn fetch_unread_posts(
-    client: &Client,
-    filter: &FilterConfig,
-) -> Result<Vec<Post>> {
+pub async fn fetch_unread_posts(client: &Client, filter: &FilterConfig) -> Result<Vec<Post>> {
     let mut posts = Vec::new();
     let mut dialogs = client.iter_dialogs();
 
@@ -116,15 +113,16 @@ pub async fn fetch_unread_posts(
         // filtered group IDs first so every album member is dropped together.
         let mut filtered_groups: std::collections::HashSet<i64> = std::collections::HashSet::new();
         for msg in &raw_msgs {
-            if has_excessive_negative_reactions(&msg.raw, filter) {
-                if let Some(gid) = msg.raw.grouped_id {
-                    filtered_groups.insert(gid);
-                }
+            if has_excessive_negative_reactions(&msg.raw, filter)
+                && let Some(gid) = msg.raw.grouped_id
+            {
+                filtered_groups.insert(gid);
             }
         }
 
         let mut channel_posts: Vec<Post> = Vec::new();
-        let mut group_indices: std::collections::HashMap<i64, usize> = std::collections::HashMap::new();
+        let mut group_indices: std::collections::HashMap<i64, usize> =
+            std::collections::HashMap::new();
 
         for msg in raw_msgs {
             match msg.raw.grouped_id {
@@ -191,7 +189,7 @@ fn extract_first_link(raw: &tl::types::Message) -> Option<String> {
     for entity in entities {
         match entity {
             tl::enums::MessageEntity::TextUrl(e) if !e.url.is_empty() => {
-                return Some(e.url.clone())
+                return Some(e.url.clone());
             }
             tl::enums::MessageEntity::Url(e) => {
                 let start = usize::try_from(e.offset).ok();
@@ -204,12 +202,11 @@ fn extract_first_link(raw: &tl::types::Message) -> Option<String> {
                 }
                 let units = text_utf16.get_or_insert_with(|| raw.message.encode_utf16().collect());
                 let end = start.saturating_add(length);
-                if end <= units.len() {
-                    if let Ok(s) = String::from_utf16(&units[start..end]) {
-                        if !s.is_empty() {
-                            return Some(s);
-                        }
-                    }
+                if end <= units.len()
+                    && let Ok(s) = String::from_utf16(&units[start..end])
+                    && !s.is_empty()
+                {
+                    return Some(s);
                 }
             }
             _ => {}
@@ -242,5 +239,5 @@ fn has_excessive_negative_reactions(raw: &tl::types::Message, config: &FilterCon
         return false;
     };
 
-    config.negative_emojis.iter().any(|e| *e == emoji.emoticon)
+    config.negative_emojis.contains(&emoji.emoticon)
 }

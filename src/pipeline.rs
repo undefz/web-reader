@@ -3,7 +3,7 @@ use grammers_client::Client;
 use std::collections::HashMap;
 
 use crate::config::Config;
-use crate::post::{Post, Kind};
+use crate::post::{Kind, Post};
 use crate::state::State;
 use crate::{hn, rss, telegram};
 

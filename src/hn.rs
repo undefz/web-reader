@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 
-use crate::post::{Post, Kind};
+use crate::post::{Kind, Post};
 
 const TOP_STORIES_URL: &str = "https://hacker-news.firebaseio.com/v0/topstories.json";
 const ITEM_URL: &str = "https://hacker-news.firebaseio.com/v0/item";
@@ -27,12 +27,7 @@ pub async fn fetch_top_stories(
         .user_agent("web/0.1")
         .build()?;
 
-    let ids: Vec<u64> = client
-        .get(TOP_STORIES_URL)
-        .send()
-        .await?
-        .json()
-        .await?;
+    let ids: Vec<u64> = client.get(TOP_STORIES_URL).send().await?.json().await?;
 
     let unseen_ids: Vec<u64> = ids
         .into_iter()
@@ -45,7 +40,13 @@ pub async fn fetch_top_stories(
         let client = client.clone();
         tasks.push(tokio::spawn(async move {
             let url = format!("{ITEM_URL}/{id}.json");
-            client.get(&url).send().await?.json::<HnItem>().await.map_err(anyhow::Error::from)
+            client
+                .get(&url)
+                .send()
+                .await?
+                .json::<HnItem>()
+                .await
+                .map_err(anyhow::Error::from)
         }));
     }
 
@@ -57,11 +58,7 @@ pub async fn fetch_top_stories(
                     continue;
                 }
                 let title = item.title.unwrap_or_default();
-                let body = item
-                    .text
-                    .as_deref()
-                    .map(|t| html_to_text(t))
-                    .unwrap_or_default();
+                let body = item.text.as_deref().map(html_to_text).unwrap_or_default();
                 let text = if !body.is_empty() {
                     format!("{title}\n\n{body}")
                 } else {
@@ -76,7 +73,10 @@ pub async fn fetch_top_stories(
                     date,
                     view_count: item.score,
                     id: Some(format!("hn:{}", item.id)),
-                    link: item.url.or(Some(format!("https://news.ycombinator.com/item?id={}", item.id))),
+                    link: item.url.or(Some(format!(
+                        "https://news.ycombinator.com/item?id={}",
+                        item.id
+                    ))),
                     kind: Kind::HackerNews,
                 });
             }

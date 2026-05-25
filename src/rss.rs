@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::post::{Post, Kind};
+use crate::post::{Kind, Post};
 
 fn html_to_text(html: &str) -> String {
     if html.contains('<') {
