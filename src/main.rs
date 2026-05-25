@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod hn;
+mod pipeline;
 mod post;
 mod rss;
 mod state;
@@ -9,7 +10,7 @@ mod theme;
 mod ui;
 
 use anyhow::Result;
-use app::{make_preview, App, ChannelPost, Screen};
+use app::{App, Screen};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 
 #[tokio::main]
@@ -59,99 +60,20 @@ async fn main() -> Result<()> {
         )
     })?;
 
-    let rss_urls = config.rss.clone();
-    let hn_config = &config.hacker_news;
-    let hn_enabled = hn_config.enabled;
-    let hn_limit = hn_config.limit;
-    let seen_clone = state.seen.clone();
-
-    let (tg_result, rss_result, hn_result) = tokio::join!(
-        telegram::fetch_unread_posts(&client, &config.filter),
-        rss::fetch_feeds(&rss_urls),
-        async {
-            if hn_enabled {
-                hn::fetch_top_stories(hn_limit, &seen_clone).await
-            } else {
-                Ok(vec![])
-            }
-        },
-    );
+    let pipeline_result = pipeline::collect_posts(&client, &config, &mut state).await;
 
     if let Err(e) = client.session().save_to_file(&config.telegram.session_file) {
         eprintln!("Warning: failed to save session: {e}");
     }
 
-    let mut fetched = match tg_result {
-        Ok(f) => f,
+    let posts = match pipeline_result {
+        Ok(p) => p,
         Err(e) => {
             ratatui::restore();
             return Err(e);
         }
     };
 
-    match rss_result {
-        Ok(rss_posts) => fetched.extend(rss_posts),
-        Err(e) => eprintln!("Warning: RSS fetch failed: {e}"),
-    }
-
-    match hn_result {
-        Ok(hn_posts) => fetched.extend(hn_posts),
-        Err(e) => eprintln!("Warning: HN fetch failed: {e}"),
-    }
-
-    // Filter out already-seen items
-    fetched.retain(|p| match &p.id {
-        Some(id) => !state.is_seen(id),
-        None => true,
-    });
-
-    // Sort: by source category (HN, RSS, TG), then by source name
-    // (whichever source has the newest post comes first), then newest first within source
-    use std::collections::HashMap;
-    let mut source_newest: HashMap<(post::Source, String), chrono::DateTime<chrono::Utc>> =
-        HashMap::new();
-    for p in &fetched {
-        let key = (p.source, p.channel_name.clone());
-        let entry = source_newest.entry(key).or_insert(p.date);
-        if p.date > *entry {
-            *entry = p.date;
-        }
-    }
-    fetched.sort_by(|a, b| {
-        a.source
-            .cmp(&b.source)
-            .then_with(|| {
-                let a_newest = source_newest[&(a.source, a.channel_name.clone())];
-                let b_newest = source_newest[&(b.source, b.channel_name.clone())];
-                b_newest.cmp(&a_newest)
-            })
-            .then_with(|| b.date.cmp(&a.date))
-    });
-
-    let terminal_width = terminal.size()?.width;
-    let posts: Vec<ChannelPost> = fetched
-        .into_iter()
-        .map(|p| ChannelPost {
-            preview: make_preview(&p.channel_name, &p.text, terminal_width),
-            channel_name: p.channel_name,
-            text: if p.text.is_empty() {
-                "(media)".into()
-            } else {
-                p.text
-            },
-            date: p.date,
-            view_count: p.view_count,
-            id: p.id,
-            link: p.link,
-        })
-        .collect();
-
-    // Mark all displayed RSS items as seen
-    for post in &posts {
-        if let Some(id) = &post.id {
-            state.mark_seen(id.clone());
-        }
-    }
     if let Err(e) = state.save(&config.state_file) {
         eprintln!("Warning: failed to save state: {e}");
     }

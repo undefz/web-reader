@@ -6,7 +6,7 @@ use grammers_tl_types as tl;
 use std::io::{self, Write};
 
 use crate::config::{FilterConfig, TelegramConfig};
-use crate::post::{FetchedPost, Source};
+use crate::post::{Post, Type};
 
 pub async fn connect(config: &TelegramConfig) -> Result<Client> {
     let client = Client::connect(Config {
@@ -65,7 +65,7 @@ pub async fn connect(config: &TelegramConfig) -> Result<Client> {
 pub async fn fetch_unread_posts(
     client: &Client,
     filter: &FilterConfig,
-) -> Result<Vec<FetchedPost>> {
+) -> Result<Vec<Post>> {
     let mut posts = Vec::new();
     let mut dialogs = client.iter_dialogs();
 
@@ -123,7 +123,7 @@ pub async fn fetch_unread_posts(
             }
         }
 
-        let mut channel_posts: Vec<FetchedPost> = Vec::new();
+        let mut channel_posts: Vec<Post> = Vec::new();
         let mut group_indices: std::collections::HashMap<i64, usize> = std::collections::HashMap::new();
 
         for msg in raw_msgs {
@@ -150,16 +150,26 @@ pub async fn fetch_unread_posts(
                 group_indices.insert(gid, channel_posts.len());
             }
 
-            channel_posts.push(FetchedPost {
-                channel_name: channel_name.clone(),
+            channel_posts.push(Post {
+                source: channel_name.clone(),
                 text,
                 date: msg.date(),
                 view_count: msg.view_count(),
                 id: None,
                 link,
-                source: Source::Telegram,
+                type_: Type::Telegram,
             });
         }
+
+        // Telegram media posts can have no caption — substitute a placeholder
+        // here, after album merging, so a caption from a later album member
+        // still wins over the placeholder.
+        for post in &mut channel_posts {
+            if post.text.is_empty() {
+                post.text = "(media)".into();
+            }
+        }
+
         posts.extend(channel_posts);
 
         // Mark channel as read

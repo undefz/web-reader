@@ -1,4 +1,4 @@
-use unicode_width::UnicodeWidthStr;
+use crate::post::Post;
 
 pub enum Screen {
     Loading(String),
@@ -7,19 +7,9 @@ pub enum Screen {
     Help,
 }
 
-pub struct ChannelPost {
-    pub channel_name: String,
-    pub text: String,
-    pub date: chrono::DateTime<chrono::Utc>,
-    pub preview: String,
-    pub view_count: Option<i32>,
-    pub id: Option<String>,
-    pub link: Option<String>,
-}
-
 pub struct App {
     pub screen: Screen,
-    pub posts: Vec<ChannelPost>,
+    pub posts: Vec<Post>,
     pub selected: usize,
     pub scroll_offset: usize,
     pub list_offset: usize,
@@ -27,7 +17,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(posts: Vec<ChannelPost>) -> Self {
+    pub fn new(posts: Vec<Post>) -> Self {
         Self {
             screen: Screen::Main,
             posts,
@@ -81,36 +71,4 @@ impl App {
     pub fn scroll_up(&mut self) {
         self.scroll_offset = self.scroll_offset.saturating_sub(1);
     }
-}
-
-pub fn make_preview(channel_name: &str, text: &str, max_width: u16) -> String {
-    let prefix = format!("[{}] ", channel_name);
-    let prefix_width = UnicodeWidthStr::width(prefix.as_str());
-    let available = (max_width as usize).saturating_sub(prefix_width);
-
-    let first_line = text.lines().next().unwrap_or("(no text)");
-    let first_line = if first_line.is_empty() {
-        "(media)"
-    } else {
-        first_line
-    };
-
-    truncate_to_width(first_line, available)
-}
-
-fn truncate_to_width(s: &str, max_width: usize) -> String {
-    let mut width = 0;
-    let mut result = String::new();
-    for ch in s.chars() {
-        let ch_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0);
-        if width + ch_width > max_width {
-            if max_width >= 1 {
-                result.push('…');
-            }
-            break;
-        }
-        width += ch_width;
-        result.push(ch);
-    }
-    result
 }

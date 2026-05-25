@@ -1,5 +1,6 @@
 use ratatui::prelude::*;
 use ratatui::widgets::*;
+use unicode_width::UnicodeWidthStr;
 
 use crate::app::{App, Screen};
 use crate::theme;
@@ -73,9 +74,10 @@ fn render_main(frame: &mut Frame, app: &App) {
             theme::channel_name()
         };
 
+        let preview = make_preview(&post.source, &post.text, chunks[1].width);
         let line = Line::from(vec![
-            Span::styled(format!("[{}] ", post.channel_name), chan_style),
-            Span::styled(&post.preview, style),
+            Span::styled(format!("[{}] ", post.source), chan_style),
+            Span::styled(&preview, style),
         ]);
 
         let y = chunks[1].y + i as u16;
@@ -123,7 +125,7 @@ fn render_detail(frame: &mut Frame, app: &App, post_idx: usize) {
     frame.render_widget(Clear, modal_area);
 
     let block = Block::default()
-        .title(format!(" {} ", post.channel_name))
+        .title(format!(" {} ", post.source))
         .title_style(theme::channel_name())
         .borders(Borders::ALL)
         .border_style(Style::default().fg(theme::BORDER))
@@ -225,4 +227,29 @@ fn render_help(frame: &mut Frame) {
     );
 
     frame.render_widget(help, popup_area);
+}
+
+fn make_preview(source: &str, text: &str, max_width: u16) -> String {
+    let prefix = format!("[{}] ", source);
+    let prefix_width = UnicodeWidthStr::width(prefix.as_str());
+    let available = (max_width as usize).saturating_sub(prefix_width);
+    let first_line = text.lines().next().unwrap_or("");
+    truncate_to_width(first_line, available)
+}
+
+fn truncate_to_width(s: &str, max_width: usize) -> String {
+    let mut width = 0;
+    let mut result = String::new();
+    for ch in s.chars() {
+        let ch_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0);
+        if width + ch_width > max_width {
+            if max_width >= 1 {
+                result.push('…');
+            }
+            break;
+        }
+        width += ch_width;
+        result.push(ch);
+    }
+    result
 }

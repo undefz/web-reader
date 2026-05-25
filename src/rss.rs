@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::post::{FetchedPost, Source};
+use crate::post::{Post, Type};
 
 fn html_to_text(html: &str) -> String {
     if html.contains('<') {
@@ -10,7 +10,7 @@ fn html_to_text(html: &str) -> String {
     }
 }
 
-pub async fn fetch_feeds(urls: &[String]) -> Result<Vec<FetchedPost>> {
+pub async fn fetch_feeds(urls: &[String]) -> Result<Vec<Post>> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("web/0.1")
@@ -28,7 +28,7 @@ pub async fn fetch_feeds(urls: &[String]) -> Result<Vec<FetchedPost>> {
     Ok(posts)
 }
 
-async fn fetch_one(client: &reqwest::Client, url: &str) -> Result<Vec<FetchedPost>> {
+async fn fetch_one(client: &reqwest::Client, url: &str) -> Result<Vec<Post>> {
     let body = client.get(url).send().await?.bytes().await?;
     let feed = feed_rs::parser::parse(body.as_ref())?;
 
@@ -80,14 +80,14 @@ async fn fetch_one(client: &reqwest::Client, url: &str) -> Result<Vec<FetchedPos
 
         let link = entry.links.first().map(|l| l.href.clone());
 
-        posts.push(FetchedPost {
-            channel_name: feed_title.clone(),
+        posts.push(Post {
+            source: feed_title.clone(),
             text,
             date,
             view_count: None,
             id: Some(format!("rss:{id}")),
             link,
-            source: Source::Rss,
+            type_: Type::Rss,
         });
     }
 

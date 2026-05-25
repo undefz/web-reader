@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 
-use crate::post::{FetchedPost, Source};
+use crate::post::{Post, Type};
 
 const TOP_STORIES_URL: &str = "https://hacker-news.firebaseio.com/v0/topstories.json";
 const ITEM_URL: &str = "https://hacker-news.firebaseio.com/v0/item";
@@ -21,7 +21,7 @@ struct HnItem {
 pub async fn fetch_top_stories(
     limit: usize,
     seen: &std::collections::HashSet<String>,
-) -> Result<Vec<FetchedPost>> {
+) -> Result<Vec<Post>> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .user_agent("web/0.1")
@@ -70,14 +70,14 @@ pub async fn fetch_top_stories(
                 let date = chrono::DateTime::from_timestamp(item.time.unwrap_or(0), 0)
                     .unwrap_or_else(chrono::Utc::now);
 
-                posts.push(FetchedPost {
-                    channel_name: format!("HN ({})", item.score.unwrap_or(0)),
+                posts.push(Post {
+                    source: format!("HN ({})", item.score.unwrap_or(0)),
                     text,
                     date,
                     view_count: item.score,
                     id: Some(format!("hn:{}", item.id)),
                     link: item.url.or(Some(format!("https://news.ycombinator.com/item?id={}", item.id))),
-                    source: Source::HackerNews,
+                    type_: Type::HackerNews,
                 });
             }
             _ => continue,
