@@ -32,7 +32,8 @@ Create `~/.config/web.json`:
   "filter": {
     "min_negative_reactions": 10,
     "negative_emojis": ["🤡", "💩"]
-  }
+  },
+  "cooldown_minutes": 30
 }
 ```
 
@@ -51,6 +52,10 @@ When enabled, fetches the top N stories from the HN API. Channel name shows the 
 ### State
 
 The state file tracks which RSS and HN items have been seen so they don't reappear on the next run. Telegram uses its own read-tracking via the API.
+
+### Cooldown
+
+`cooldown_minutes` enforces a minimum gap between runs — if you reopen the app before it elapses, it exits with the remaining time printed. Defaults to `0` (disabled). Useful to keep yourself from refreshing every five minutes.
 
 ## Usage
 

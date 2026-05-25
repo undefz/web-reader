@@ -16,5 +16,6 @@
   "filter": {
     "min_negative_reactions": 10,
     "negative_emojis": ["🤡", "💩"]
-  }
+  },
+  "cooldown_minutes": 30
 }
